@@ -63,7 +63,7 @@ def create_output_text(general_list, arrivals_all, volumes_day, income, left_cou
         else:
             lines.append(
                 f"В {time_str} клиент "
-                f"{fuel} {liters} заправил свой автомобиль и покинул АЗС.")
+                f"{time_str} {fuel} {liters} {duration} заправил свой автомобиль и покинул АЗС.")
             if queues[station]:
                 queues[station].pop(0)
 
@@ -111,6 +111,7 @@ def create_output_text(general_list, arrivals_all, volumes_day, income, left_cou
     
 
     lines.append(f"Время окупаемости заправки: {round(10000000 / (income_month - expenses_month), 1)} года.")
+
 
 
     return "\n".join(lines)
