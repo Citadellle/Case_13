@@ -1,6 +1,4 @@
-from typing import List, Dict, Tuple
-
-def reading_requests() -> List[str]:
+def reading_requests() -> list:
     '''
     The function reads data from the 'input.txt' file and returns
     a list of strings, each representing a line from the file.
@@ -15,7 +13,7 @@ def reading_requests() -> List[str]:
     return requests
 
 
-def reading_gas_stations() -> Dict[int, Tuple]:
+def reading_gas_stations() -> dict:
     '''
     The function reads gas station data from the 'gas_stations.txt' file.
 
@@ -41,3 +39,4 @@ def reading_gas_stations() -> Dict[int, Tuple]:
                                                    line_elements[2:])
 
     return gas_stations
+
