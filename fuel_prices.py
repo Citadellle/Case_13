@@ -1,19 +1,26 @@
 import requests
 from bs4 import BeautifulSoup
 
-
 def get_fuel_prices() -> dict:
+    '''
+    The function take current fuel prices from the website driff.ru.
+    If the website is unavailable or an error occurs, returns default prices.
+
+    Returns:
+        dict: Dictionary containing fuel types as keys and 
+              their prices as values.
+    '''
     url = 'https://driff.ru/fuel-dynamics/'
 
     try:
-        # Отправляем запрос к серверу и получаем содержимое страницы
+        # Send a request to the server and get the page content
         r = requests.get(url)
-        # Преобразуем из формата str к формату BeautifulSoup,
-        # с которым удобнее работать
+        # Convert from string format to BeautifulSoup format for 
+        # easier parsing
         soup = BeautifulSoup(r.text, 'html.parser')
         
-        # Ищем по тегам
-        # Берем только первые 4 элемента
+        # Search by tags
+        # Take only the first 4 elements
         fuels_data = soup.find('tbody').find_all('tr')[:4]
 
         prices = [fuel.find_all('td')[1].text for fuel in fuels_data]
