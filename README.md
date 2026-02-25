@@ -1,5 +1,5 @@
 # Case_13
-This case have been done by Gordeev Mihail, Simonov Alexey and Fedotova Maria.
+This case have been done by Gordeev Mikhail, Simonov Alexey and Fedotova Maria.
 
 The program simulates one day of operation at a gas station. The program processes the request flow from the file input.txt by assigning cars to vending machines, depending on the type of fuel needed and the length of the queue. 
 As a result of the simulation, the amount of fuel sold, customer losses due to crowded queues, income and expenses are calculated. The analysis of average monthly income and expenses, as well as the payback time of the gas station, is summarized.
