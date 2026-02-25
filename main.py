@@ -17,45 +17,45 @@ from results_and_conclusion import *
 
 
 def main():
-    # Получаем список со всеми заявками на заправку
+    # Get list of all refueling requests
     requests = reading_requests()
-    # Получаем словарь с информацией о бензоколонках
+    # Get dictionary with gas station information
     gas_stations = reading_gas_stations()
-    # Получаем словарь с данными о ценах на бензин
+    # Get dictionary with fuel price data
     gas_prices = fuel_prices.get_fuel_prices()
 
-    # Получаем список прибытий на заправку:
-    # [{время прибытия (HH:MM формат),
-    #   количество топлива,
-    #   вид топлива,
-    #   длительность заправки,
-    #   прибыл}, ...]
+    # Get list of arrivals at the gas station:
+    # [{arrival time (HH:MM format),
+    #   amount of fuel,
+    #   fuel type,
+    #   refueling duration,
+    #   arrival flag}, ...]
     arrivals_not_served = processing_requests(requests)
     
-    # Назначаем прибывших на автоматы и получаем список начала заправки:
-    # [{время начала заправки (количество минут от полуночи),
-    #   количество топлива,
-    #   вид топлива,
-    #   длительность заправки,
-    #   прибыл}, ...]
-    # Получаем 2 списка: всех клиентов, обслуженных клиентов,
-    # количество клиентов, которые покинули АЗС не заправив автомобиль
+    # Assign arrivals to stations and get list of refueling starts:
+    # [{start time of refueling (minutes from midnight),
+    #   amount of fuel,
+    #   fuel type,
+    #   refueling duration,
+    #   arrival flag}, ...]
+    # Get: list of all clients, list of served clients,
+    # Get number of clients who leave the station without refueling
     arrivals_all, arrivals_served, leave_count = assign_requests_to_stations(
                                                         arrivals_not_served,
                                                         gas_stations)
 
-    # Получаем список окончания заправки:
-    # [{время конца заправки (количество минут от полуночи),
-    #   количество топлива,
-    #   вид топлива,
-    #   длительность заправки,
-    #   прибыл}, ...]
+    # Get list of the end of refueling:
+    # [{end time of refueling (minutes from midnight),
+    #   amount of fuel,
+    #   fuel type,
+    #   refueling duration,
+    #   arrival flag}, ...]
     arrivals_finishes = processing_end_refueling(arrivals_served)
 
-    # Общий список (прибывшие, заправившиеся и не дождавшиеся заправки)
+    # Combined list (arrivals, completed refuelings, and not refueling)
     general_list = join_lists(arrivals_all, arrivals_finishes)
 
-    # Подсчитываем итоги
+    # Calculate results for the day
     volumes_fuel_day, income = calculating_results(gas_prices, arrivals_served)
 
     report = create_output_text(general_list,
@@ -65,7 +65,7 @@ def main():
                                 leave_count,
                                 gas_stations)
 
-
+    # Recording the report to a output.txt file
     with open('output.txt', 'w', encoding= 'utf-8') as f:
         f.write(report)
 
