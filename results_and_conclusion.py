@@ -7,98 +7,86 @@ import ru_local as local
 # Functions for time processing
 from time_processing import *
 
-# Annotations
-from typing import Dict, List, Tuple, Any, Union
 
-
-def calculating_results(
-    gas_prices: Dict[str, float],
-    arrivals_served: List[Dict[str, Any]]
-) -> Tuple[Dict[str, float], float]:
+def calculating_results(gas_prices: dict, arrivals_served: dict) -> tuple:
     """
-    Calculate daily fuel volumes sold and total income
+    The function calculates daily fuel volumes sold and total income
     based on served refueling requests and current fuel prices.
 
     Args:
-        gas_prices: Dictionary with fuel types as keys and their prices as values.
-        arrivals_served: List of dictionaries containing served arrivals.
-                         Each dict must have keys:
-                         - local.TYPE (str): fuel type
-                         - local.VOLUME (str/int): amount of fuel refueled (liters)
+        gas_prices (dict): Dictionary with fuel types as keys and
+                           their prices as values
+        arrivals_served (dict): Dictionary containing served arrivals with:
+                               - TYPE: fuel type
+                               - VOLUME: amount of fuel refueled
 
     Returns:
-        Tuple containing:
-            - volumes_day: Dictionary with fuel types and total liters sold.
-            - income: Total daily income from all refueling operations.
+        tuple: A tuple containing:
+            - volumes_day (dict): Dictionary with fuel types and
+                                  total liters sold
+            - income (float): Total daily income from all refueling operations
     """
-    # Dictionary to accumulate daily volumes for each fuel type
-    volumes_day: Dict[str, float] = {fuel: 0.0 for fuel in gas_prices}
+    # Set up a dictionary with initial zero values for fuel sold
+    volumes_day = {}
+    for t in gas_prices:
+        volumes_day[t] = 0
 
-    # Total income
+    # Income
     income = 0.0
-    # Iterate through all served requests
+    # Iterate over all served arrivals
     for arrival in arrivals_served:
-        fuel_type = arrival[local.TYPE]
-        fuel_volume = int(arrival[local.VOLUME])
+        type_fuel = arrival[local.TYPE]
+        volume_fuel = int(arrival[local.VOLUME])
 
-        # If the required fuel is available at the station, process the refueling.
-        if fuel_type in volumes_day:
-            # Store total liters refueled for this fuel type
-            volumes_day[fuel_type] += fuel_volume
-            # Add to total income from this refueling
-            income += (fuel_volume * float(gas_prices[fuel_type]))
+        # If the required fuel type is available, serve the customer
+        if type_fuel in volumes_day:
+            # Store the amount of fuel dispensed for this type
+            volumes_day[type_fuel] += volume_fuel
+            # Add the revenue from this refueling to total income
+            income += (volume_fuel * float(gas_prices[type_fuel]))
 
     return volumes_day, income
 
 
-def create_output_text(
-    general_list: List[Dict[str, Any]],
-    arrivals_all: List,
-    volumes_day: Dict[str, float],
-    income: float,
-    left_count: int,
-    stations: Dict[int, Tuple[int, List[str]]]
-) -> str:
+def create_output_text(general_list: list, arrivals_all: list,
+                       volumes_day: dict, income: float,
+                       left_count: int, stations: dict) -> str:
     """
-    Generate a complete simulation report including events, totals, and analysis.
-
-    The report contains step‑by‑step events, queue states, daily totals,
-    extended statistics (by fuel type and dispenser), and economic analysis.
+    Generates a complete simulation report:
+    - step‑by‑step events with queue states;
+    - final results;
+    - extended statistics (by fuel type, by pump, waiting times);
+    - economic analysis.
 
     Args:
-        general_list: List of event dictionaries. Each event contains keys:
-            - local.TIME (float): event time in minutes from midnight.
-            - local.ARRIVAL (bool): True for arrival, False for departure.
-            - local.TYPE (str): fuel type.
-            - local.VOLUME (int): refuel volume in liters.
-            - local.REFILL_DURATION (float): duration of refueling in minutes.
-            - local.MACHINE (int, optional): dispenser number.
-            - local.LEAVE (bool, optional): True for arrivals that leave immediately.
-            - ARRIVAL_TIME_KEY (float, optional): original arrival time for departures.
-        arrivals_all: List of all arrival events (used for total count).
-        volumes_day: Dictionary with fuel types and total liters sold.
-        income: Total daily income.
-        left_count: Number of customers who left because the queue was too long.
-        stations: Dispenser configuration.
-                  Keys are dispenser numbers, values are tuples:
-                  (max_queue_allowed, [list of fuel types dispensed]).
+        general_list (list): List of all events (arrivals and departures)
+                             in chronological order.
+        arrivals_all (list): List of all arrival events
+                             (including those refused).
+        volumes_day (dict): Dictionary with fuel types and total liters sold
+                            per type.
+        income (float): Total daily income from served refuelings.
+        left_count (int): Number of customers who left without service.
+        stations (dict): Dictionary describing each fuel pump:
+                         key – pump id,
+                         value – tuple (max_queue, [fuel_types]).
 
     Returns:
-        Formatted string containing the complete simulation report.
+        str: Formatted multi‑line report string.
     """
     lines = []
 
-    # Queues at the time of event processing (for display)
-    queues: Dict[int, List[float]] = {station: [] for station in stations}
+    # Current queues at each pump (for display during event handling)
+    queues = {station: [] for station in stations}
 
     # Statistics by fuel type
-    fuel_stats: Dict[str, Dict[str, Union[int, float]]] = {
+    fuel_stats = {
         fuel: {'served': 0, 'volume': 0.0, 'refused': 0}
         for fuel in volumes_day.keys()
     }
 
-    # Statistics by dispenser
-    station_stats: Dict[int, Dict[str, Union[int, float, List[float]]]] = {
+    # Statistics by pump
+    station_stats = {
         station: {
             'served': 0,
             'volume': 0.0,
@@ -110,23 +98,24 @@ def create_output_text(
         for station in stations
     }
 
-
-    # Overall waiting indicators
-    total_wait_all = 0.0
+    # Overall waiting time indicators
+    total_wait_all = 0
     total_served_all = 0
-    max_wait_all = 0.0
+    max_wait_all = 0
 
-    for e in general_list:
-        event_time = e[local.TIME]
+    for event in general_list:
+        # Event time (arrival or departure) in minutes from midnight
+        event_time = event[local.TIME]
         event_time_str = standart_format_time(event_time)
 
-        fuel = e[local.TYPE]
-        liters = e[local.VOLUME]
-        duration = e[local.REFILL_DURATION]
-        station = e.get(local.MACHINE)
+        fuel = event[local.TYPE]
+        liters = event[local.VOLUME]
+        duration = event[local.REFILL_DURATION]
+        station = event.get(local.MACHINE)
 
-        if e[local.ARRIVAL]:                     # Arrival event
-            if e.get(local.LEAVE) is True:       # Customer left without joining queue
+
+        if event[local.ARRIVAL]:
+            if event.get(local.LEAVE) is True:  # Customer left without joining queue
                 lines.append(
                     f"{local.IN} {event_time_str} {local.NEW_CLIENT}"
                     f"{event_time_str} {fuel} {int(liters)} {duration} "
@@ -134,19 +123,21 @@ def create_output_text(
                 )
                 if fuel in fuel_stats:
                     fuel_stats[fuel]['refused'] += 1
-            else:                                 # Customer joined a queue
+            else:                            # Customer joined the queue
                 lines.append(
                     f"{local.IN} {event_time_str} {local.NEW_CLIENT}"
                     f"{event_time_str} {fuel} {int(liters)} {duration} "
                     f"{local.QUEUE} {station}"
                 )
                 queues[station].append(duration)
+                # Update maximum queue length for this pump
                 current_q = len(queues[station])
                 if current_q > station_stats[station]['max_queue']:
                     station_stats[station]['max_queue'] = current_q
 
-        else:                                     # Departure event
-            arrival_time = e.get(local.TIME_ARRIVAL)
+        else:
+            # Customer's arrival time (when they first came)
+            arrival_time = event.get(local.TIME_ARRIVAL)
             if arrival_time is None:
                 arrival_time = event_time - duration
             arrival_time_str = standart_format_time(arrival_time)
@@ -157,10 +148,12 @@ def create_output_text(
                 f"{local.REFUELED}"
             )
 
+            # Start time of refueling
             start_time = event_time - duration
-            wait = start_time - arrival_time      # Waiting time in queue
+            wait = start_time - arrival_time   # waiting time in queue
 
             if station is not None:
+                # Update pump statistics
                 st = station_stats[station]
                 st['served'] += 1
                 st['volume'] += liters
@@ -168,20 +161,22 @@ def create_output_text(
                 st['total_wait'] += wait
                 st['wait_list'].append(wait)
 
+                # Update overall waiting statistics
                 total_served_all += 1
                 total_wait_all += wait
                 if wait > max_wait_all:
                     max_wait_all = wait
 
+                # Update fuel type statistics
                 if fuel in fuel_stats:
                     fuel_stats[fuel]['served'] += 1
                     fuel_stats[fuel]['volume'] += liters
 
-            # Remove customer from queue
+            # Remove the customer from the queue
             if queues[station]:
                 queues[station].pop(0)
 
-        # Display queue status after each event
+        # Display queue states for all pumps after this event
         for sid in sorted(stations.keys()):
             max_q = stations[sid][0]
             fuels = " ".join(stations[sid][1])
@@ -193,7 +188,6 @@ def create_output_text(
             )
         lines.append("")
 
-    # Daily totals (mandatory part)
     lines.append("")
     lines.append(local.RESULT)
     for fuel in volumes_day:
@@ -210,7 +204,7 @@ def create_output_text(
         s = fuel_stats[fuel]
         lines.append(
             f"  {fuel}: {local.SERVICED_1} {s['served']}, "
-            f"{local.AMOUNT} {s['volume']:.1f} {local.LITERS}, "
+            f"{local.AMOUNT} {s['volume']} {local.LITERS}, "
             f"{local.REJECTION} {s['refused']}"
         )
 
@@ -219,22 +213,25 @@ def create_output_text(
     lines.append(local.MACHINES)
     for sid in sorted(stations.keys()):
         st = station_stats[sid]
-        avg_wait = st['total_wait'] / st['served'] if st['served'] > 0 else 0.0
-        load_percent = (st['total_duration'] / (24 * 60)) * 100.0
+        avg_wait = (st['total_wait'] / st['served']
+                    if st['served'] > 0 else 0)
+        load_percent = (st['total_duration'] / (24 * 60)) * 100
         lines.append(f"  {local.AUTOMATIC_CONTROL_NUMBER}{sid}:")
         lines.append(f"    {local.SERVICED_2} {st['served']}")
-        lines.append(f"    {local.MARKET_LITERS} {st['volume']:.1f}")
-        lines.append(f"    {local.AVERAGE_TIME} {avg_wait:.1f} {local.MINUTES}")
+        lines.append(f"    {local.MARKET_LITERS} {st['volume']}")
+        lines.append(f"    {local.AVERAGE_TIME} {avg_wait} "
+                     f"{local.MINUTES}")
         lines.append(f"    {local.MAX_LINE} {st['max_queue']}")
-        lines.append(f"    {local.LOADING} {load_percent:.1f}%")
+        lines.append(f"    {local.LOADING} {load_percent}%")
 
     lines.append("")
     if total_served_all > 0:
         avg_wait_all = total_wait_all / total_served_all
-        lines.append(f"{local.GENERAL_AVERAGE} {avg_wait_all:.1f} {local.MINUTES}")
-        lines.append(f"{local.MAX_TIME} {max_wait_all:.0f} {local.MINUTES}")
+        lines.append(f"{local.GENERAL_AVERAGE} {avg_wait_all} "
+                     f"{local.MINUTES}")
+        lines.append(f"{local.MAX_TIME} {max_wait_all} {local.MINUTES}")
     lines.append(
-        f"{local.PERCENT} {left_count / len(arrivals_all) * 100.0:.1f}% "
+        f"{local.PERCENT} {left_count / len(arrivals_all) * 100}% "
         f"({left_count} {local.FROM} {len(arrivals_all)})"
     )
 
@@ -247,16 +244,20 @@ def create_output_text(
         + random.randint(50000, 80000)
         + random.randint(20000, 30000)
     )
-    expenses_variables = (income * 0.8 + income * 0.018) * 30.0
+    expenses_variables = (income * 0.8 + income * 0.018) * 30
     expenses_month = expenses_permanent + expenses_variables
-    income_month = income * 30.0
+    income_month = income * 30
 
-    lines.append(f"{local.QUOTED_CONSUMMENTS} {expenses_month // 30:.0f} {local.RUBLES}")
-    lines.append(f"{local.AVERAGE_PASSAGE} {int(income_month)} {local.RUBLES}")
-    lines.append(f"{local.AVERAGE_COSTS} {int(expenses_month)} {local.RUBLES}")
+    lines.append(f"{local.QUOTED_CONSUMMENTS} {expenses_month // 30} "
+                 f"{local.RUBLES}")
+    lines.append(f"{local.AVERAGE_PASSAGE} {int(income_month)} "
+                 f"{local.RUBLES}")
+    lines.append(f"{local.AVERAGE_COSTS} {int(expenses_month)} "
+                 f"{local.RUBLES}")
     lines.append(
         f"{local.PAYBACK_TIME}"
-        f"{round(10000000 / (income_month - expenses_month), 1)} {local.YEAR}"
+        f"{round(10000000 / (income_month - expenses_month), 1)} "
+        f"{local.YEAR}"
     )
 
     return "\n".join(lines)
